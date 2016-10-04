@@ -7,7 +7,6 @@ import struct
 import time
 
 import unittest
-import pytest
 
 VENDOR_ID=0xcafe
 PRODUCT_ID=0xcafe
@@ -434,7 +433,6 @@ class TestControlTransfer_Delays(unittest.TestCase):
         req = uu.CTRL_IN | uu.CTRL_TYPE_STANDARD | uu.CTRL_RECIPIENT_DEVICE
         return self.dev.ctrl_transfer(req, uu.GET_DESCRIPTOR, idx, lang, 255)
 
-    @pytest.mark.delay
     def test_shortDelay(self):
         """
         Test if usb stack can handle a short delay.
@@ -450,7 +448,7 @@ class TestControlTransfer_Delays(unittest.TestCase):
         self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
         self.assertEqual(buf_in, buf_out, "Buffers don't match!\n")
 
-    @pytest.mark.delay
+    @unittest.skip("Long delay test only on demand (comment this line!)")
     def test_longDelay(self):
         """
         Test if usb stack recovers correctly after a timeout.
