@@ -451,10 +451,10 @@ class TestControlTransfer_Delays(unittest.TestCase):
         x = 16
         buf_out = array.array('b')
         for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
-        self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, x, 0, buf_out)
+        self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, 0, 0, buf_out)
         delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, DELAY_SHORT)
         self.dev.write(self.intr_out, delaycmd)
-        buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
+        buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, 0, 0, x)
         self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
         self.assertEqual(buf_in, buf_out, "Buffers don't match!\n")
 
@@ -469,14 +469,14 @@ class TestControlTransfer_Delays(unittest.TestCase):
         x = 16
         buf_out = array.array('b')
         for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
-        self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, x, 0, buf_out)
+        self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, 0, 0, buf_out)
         delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, DELAY_LONG)
         self.dev.write(self.intr_out, delaycmd)
         # this is expected to timeout
-        self.assertRaises(usb.USBError, self.dev.ctrl_transfer, self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
+        self.assertRaises(usb.USBError, self.dev.ctrl_transfer, self.req, GZ_REQ_READ_LOOPBACK_BUFFER, 0, 0, x)
         time.sleep(2)
         # this should work again
-        buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
+        buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, 0, 0, x)
         self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
         self.assertEqual(buf_in, buf_out, "Buffers don't match!\n")
 
