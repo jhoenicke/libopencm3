@@ -298,8 +298,8 @@ class TestControlTransfer_Reads(unittest.TestCase):
             x = int(x)
             buf_out = array.array('b')
             for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
-            self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, x, 0, buf_out)
-            buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
+            self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, 0, 0, buf_out)
+            buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, 0, 0, x)
             self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
             self.assertEqual(buf_in, buf_out,
                              "Buffers don't match!\n - buf_out : %r\n - buf_in  : %r" %(

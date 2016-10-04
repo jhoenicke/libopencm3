@@ -379,35 +379,23 @@ static int gadget0_control_request(usbd_device *usbd_dev,
 		}
 		return USBD_REQ_HANDLED;
 	case GZ_REQ_WRITE_LOOPBACK_BUFFER:
-		if (req->wValue > sizeof(usbd_control_buffer)) {
+		if (req->wLength > sizeof(usbd_control_buffer)) {
 			ER_DPRINTF("Can't store more than out control buffer! %d > %d\n",
-				req->wValue, sizeof(usbd_control_buffer));
+				req->wLength, sizeof(usbd_control_buffer));
 			return USBD_REQ_NOTSUPP;
 		}
-		/* Don't store more than asked for! */
-		if (req->wValue > req->wLength) {
-			memcpy(loopback_buffer, *buf, req->wLength);
-			ER_DPRINTF("Truncated stored loopback data to match wLen\n");
-		} else {
-			memcpy(loopback_buffer, *buf, req->wValue);
-		}
-		ER_DPRINTF("Stored loopback data of %d\n", req->wValue);
+		memcpy(loopback_buffer, *buf, req->wLength);
+		ER_DPRINTF("Stored loopback data of %d\n", req->wLength);
 		return USBD_REQ_HANDLED;
 	case GZ_REQ_READ_LOOPBACK_BUFFER:
-		ER_DPRINTF("loopback of %d\n", req->wValue);
-		if (req->wValue > sizeof(usbd_control_buffer)) {
+		ER_DPRINTF("loopback of %d\n", req->wLength);
+		if (req->wLength > sizeof(usbd_control_buffer)) {
 			ER_DPRINTF("Can't write more than out control buffer! %d > %d\n",
-				req->wValue, sizeof(usbd_control_buffer));
+				req->wLength, sizeof(usbd_control_buffer));
 			return USBD_REQ_NOTSUPP;
 		}
-		/* Don't produce more than asked for! */
-		if (req->wValue > req->wLength) {
-			ER_DPRINTF("Truncating reply to match wLen\n");
-			*len = req->wLength;
-		} else {
-			*len = req->wValue;
-		}
-		memcpy(*buf,loopback_buffer,*len);
+		*len = req->wLength;
+		memcpy(*buf, loopback_buffer, *len);
 		return USBD_REQ_HANDLED;
 	}
 	return USBD_REQ_NEXT_CALLBACK;
