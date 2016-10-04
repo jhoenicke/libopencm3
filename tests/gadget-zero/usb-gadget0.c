@@ -324,7 +324,7 @@ static void gadget0_rx_cb_interrupt(usbd_device *usbd_dev, uint8_t ep)
 		if (len < 5) {
 			return;
 		}
-		delay = buf[1] | ((uint32_t) buf[2] << 8) | ((uint32_t) buf[3] << 16) | ((uint32_t) buf[4] << 24);
+		memcpy(&delay, buf+1, sizeof(uint32_t));
 		while (delay--) {
 			__asm__ ("nop");
 		}
