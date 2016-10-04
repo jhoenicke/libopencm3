@@ -30,10 +30,7 @@ GZ_INTR_CMD_UNDEFINED=255
 
 # The delays must be adapted to the speed of the device (and
 # maybe even compiler optimizations).
-# DELAY_LONG should be between 1 and 3 seconds, DELAY_SHORT
-# should be less than 1 second.
-DELAY_LONG=50000000  # 1.5 seconds for 5 cycle loop at 168 MHz
-DELAY_SHORT=5000000  # .15 seconds
+DELAY_MSEC=33600     # 168 MHz divided by 5 cycles.
 
 class find_by_serial(object):
     def __init__(self, serial):
@@ -452,7 +449,7 @@ class TestControlTransfer_Delays(unittest.TestCase):
         buf_out = array.array('b')
         for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
         self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, 0, 0, buf_out)
-        delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, DELAY_SHORT)
+        delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, 150 * DELAY_MSEC)
         self.dev.write(self.intr_out, delaycmd)
         buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, 0, 0, x)
         self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
@@ -470,7 +467,7 @@ class TestControlTransfer_Delays(unittest.TestCase):
         buf_out = array.array('b')
         for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
         self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, 0, 0, buf_out)
-        delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, DELAY_LONG)
+        delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, 1500 * DELAY_MSEC)
         self.dev.write(self.intr_out, delaycmd)
         # this is expected to timeout
         self.assertRaises(usb.USBError, self.dev.ctrl_transfer, self.req, GZ_REQ_READ_LOOPBACK_BUFFER, 0, 0, x)
