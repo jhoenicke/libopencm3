@@ -45,7 +45,7 @@ class TestGadget0(unittest.TestCase):
         uu.dispose_resources(self.dev)
 
     def test_sanity(self):
-        self.assertEqual(3, self.dev.bNumConfigurations, "Should have 2 configs")
+        self.assertEqual(3, self.dev.bNumConfigurations, "Should have 3 configs")
 
     def test_config_switch_2(self):
         """
