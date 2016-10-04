@@ -25,6 +25,16 @@ GZ_REQ_SET_UNALIGNED=4
 GZ_REQ_WRITE_LOOPBACK_BUFFER=10
 GZ_REQ_READ_LOOPBACK_BUFFER=11
 
+GZ_INTR_CMD_DELAY=0
+GZ_INTR_CMD_UNDEFINED=255
+
+# The delays must be adapted to the speed of the device (and
+# maybe even compiler optimizations).
+# DELAY_LONG should be between 1 and 3 seconds, DELAY_SHORT
+# should be less than 1 second.
+DELAY_LONG=50000000  # 1.5 seconds for 5 cycle loop at 168 MHz
+DELAY_SHORT=5000000  # .15 seconds
+
 class find_by_serial(object):
     def __init__(self, serial):
         self._serial = serial
@@ -422,7 +432,7 @@ class TestControlTransfer_Delays(unittest.TestCase):
         # send dummy packages on interrupt port to get in sync
         # (alternating bit protocol)
         # FIXME: Why is this necessary?
-        cmd = struct.pack('<B', 0xff)
+        cmd = struct.pack('<B', GZ_INTR_CMD_UNDEFINED)
         self.dev.write(self.intr_out, cmd)
         self.dev.write(self.intr_out, cmd)
 
@@ -441,10 +451,10 @@ class TestControlTransfer_Delays(unittest.TestCase):
         x = 16
         buf_out = array.array('b')
         for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
-        self.dev.ctrl_transfer(self.req_out, 3, x, 0, buf_out)
-        delaycmd = struct.pack('<BL', 0, 5000000)
+        self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, x, 0, buf_out)
+        delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, DELAY_SHORT)
         self.dev.write(self.intr_out, delaycmd)
-        buf_in = self.dev.ctrl_transfer(self.req, 4, x, 0, x)
+        buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
         self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
         self.assertEqual(buf_in, buf_out, "Buffers don't match!\n")
 
@@ -459,14 +469,14 @@ class TestControlTransfer_Delays(unittest.TestCase):
         x = 16
         buf_out = array.array('b')
         for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
-        self.dev.ctrl_transfer(self.req_out, 3, x, 0, buf_out)
-        delaycmd = struct.pack('<BL', 0, 50000000)
+        self.dev.ctrl_transfer(self.req_out, GZ_REQ_WRITE_LOOPBACK_BUFFER, x, 0, buf_out)
+        delaycmd = struct.pack('<BL', GZ_INTR_CMD_DELAY, DELAY_LONG)
         self.dev.write(self.intr_out, delaycmd)
         # this is expected to timeout
-        self.assertRaises(usb.USBError, self.dev.ctrl_transfer, self.req, 4, x, 0, x)
+        self.assertRaises(usb.USBError, self.dev.ctrl_transfer, self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
         time.sleep(2)
         # this should work again
-        buf_in = self.dev.ctrl_transfer(self.req, 4, x, 0, x)
+        buf_in = self.dev.ctrl_transfer(self.req, GZ_REQ_READ_LOOPBACK_BUFFER, x, 0, x)
         self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
         self.assertEqual(buf_in, buf_out, "Buffers don't match!\n")
 

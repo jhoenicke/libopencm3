@@ -52,6 +52,8 @@
 #define INTEL_COMPLIANCE_WRITE 0x5b
 #define INTEL_COMPLIANCE_READ 0x5c
 
+#define GZ_INTR_CMD_DELAY	0
+
 /* USB configurations */
 #define GZ_CFG_SOURCESINK	2
 #define GZ_CFG_LOOPBACK		3
@@ -309,23 +311,24 @@ static void gadget0_tx_cb_loopback(usbd_device *usbd_dev, uint8_t ep)
 
 static void gadget0_rx_cb_interrupt(usbd_device *usbd_dev, uint8_t ep)
 {
-	static uint8_t buf[64] __attribute__ ((aligned(4)));
-	int len = usbd_ep_read_packet(usbd_dev, ep, buf, 64);
+	static uint8_t buf[INTERRUPT_EP_MAXPACKET];
+	int len = usbd_ep_read_packet(usbd_dev, ep, buf, INTERRUPT_EP_MAXPACKET);
+	uint32_t delay;
 
 	ER_DPRINTF("interrupt rx %x %d\n", ep, len);
 
 	if (len == 0)
 		return;
 	switch (buf[0]) {
-	case 0: /* delay */ {
-		if (len < 5)
+	case GZ_INTR_CMD_DELAY:
+		if (len < 5) {
 			return;
-		uint32_t delay = buf[1] | ((uint32_t) buf[2] << 8) | ((uint32_t) buf[3] << 16) | ((uint32_t) buf[4] << 24);
+		}
+		delay = buf[1] | ((uint32_t) buf[2] << 8) | ((uint32_t) buf[3] << 16) | ((uint32_t) buf[4] << 24);
 		while (delay--) {
 			__asm__ ("nop");
 		}
 		ER_DPRINTF("delayed\n");
-	}
 	}
 }
 
