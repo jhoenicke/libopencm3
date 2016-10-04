@@ -3,8 +3,11 @@ import datetime
 import usb.core
 import usb.util as uu
 import logging
+import struct
+import time
 
 import unittest
+import pytest
 
 VENDOR_ID=0xcafe
 PRODUCT_ID=0xcafe
@@ -43,7 +46,7 @@ class TestGadget0(unittest.TestCase):
         uu.dispose_resources(self.dev)
 
     def test_sanity(self):
-        self.assertEqual(2, self.dev.bNumConfigurations, "Should have 2 configs")
+        self.assertEqual(3, self.dev.bNumConfigurations, "Should have 2 configs")
 
     def test_config_switch_2(self):
         """
@@ -191,7 +194,7 @@ class TestConfigSourceSinkPerformance(unittest.TestCase):
 
         self.cfg = uu.find_descriptor(self.dev, bConfigurationValue=2)
         self.assertIsNotNone(self.cfg, "Config 2 should exist")
-        self.dev.set_configuration(self.cfg);
+        self.dev.set_configuration(self.cfg)
         self.intf = self.cfg[(0, 0)]
         # heh, kinda gross...
         self.ep_out = [ep for ep in self.intf if uu.endpoint_direction(ep.bEndpointAddress) == uu.ENDPOINT_OUT][0]
@@ -242,7 +245,7 @@ class TestControlTransfer_Reads(unittest.TestCase):
 
         self.cfg = uu.find_descriptor(self.dev, bConfigurationValue=2)
         self.assertIsNotNone(self.cfg, "Config 2 should exist")
-        self.dev.set_configuration(self.cfg);
+        self.dev.set_configuration(self.cfg)
         self.req     = uu.CTRL_IN  | uu.CTRL_TYPE_VENDOR | uu.CTRL_RECIPIENT_INTERFACE
         self.req_out = uu.CTRL_OUT | uu.CTRL_TYPE_VENDOR | uu.CTRL_RECIPIENT_INTERFACE
 
@@ -294,12 +297,7 @@ class TestControlTransfer_Reads(unittest.TestCase):
                              buf_out.tostring(), buf_in.tostring()))
         
         ep0_size = self.dev.bMaxPacketSize0
-        #for i in range(4, ep0_size) : inner(i)
-        # some random sizes to write/readback..
-        inner(ep0_size)
-        inner(ep0_size+1)
-        inner(4)
-        inner(57)
+        for i in range(4, ep0_size) : inner(i)
 
     def test_waytoobig(self):
         """
@@ -404,6 +402,75 @@ class TestUnaligned(unittest.TestCase):
     def test_unaligned(self):
         self.set_unaligned()
         self.do_readwrite()
+
+
+class TestControlTransfer_Delays(unittest.TestCase):
+    """
+    Test cases for
+    https://github.com/libopencm3/libopencm3/issue/668
+    """
+
+    def setUp(self):
+        self.dev = usb.core.find(idVendor=VENDOR_ID, idProduct=PRODUCT_ID, custom_match=find_by_serial(DUT_SERIAL))
+        self.assertIsNotNone(self.dev, "Couldn't find locm3 gadget0 device")
+
+        self.cfg = uu.find_descriptor(self.dev, bConfigurationValue=4)
+        self.assertIsNotNone(self.cfg, "Config 4 should exist")
+        self.dev.set_configuration(self.cfg)
+        self.req     = uu.CTRL_IN  | uu.CTRL_TYPE_VENDOR | uu.CTRL_RECIPIENT_INTERFACE
+        self.req_out = uu.CTRL_OUT | uu.CTRL_TYPE_VENDOR | uu.CTRL_RECIPIENT_INTERFACE
+        self.intr_out = 1
+        # send dummy packages on interrupt port to get in sync
+        # (alternating bit protocol)
+        # FIXME: Why is this necessary?
+        cmd = struct.pack('<B', 0xff)
+        self.dev.write(self.intr_out, cmd)
+        self.dev.write(self.intr_out, cmd)
+
+    def tearDown(self):
+        uu.dispose_resources(self.dev)
+
+    def read_string(self, idx, lang=0x0409):
+        req = uu.CTRL_IN | uu.CTRL_TYPE_STANDARD | uu.CTRL_RECIPIENT_DEVICE
+        return self.dev.ctrl_transfer(req, uu.GET_DESCRIPTOR, idx, lang, 255)
+
+    @pytest.mark.delay
+    def test_shortDelay(self):
+        """
+        Test if usb stack can handle a short delay.
+        The short delay should not cause any problems or missed packets.
+        """
+        x = 16
+        buf_out = array.array('b')
+        for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
+        self.dev.ctrl_transfer(self.req_out, 3, x, 0, buf_out)
+        delaycmd = struct.pack('<BL', 0, 5000000)
+        self.dev.write(self.intr_out, delaycmd)
+        buf_in = self.dev.ctrl_transfer(self.req, 4, x, 0, x)
+        self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
+        self.assertEqual(buf_in, buf_out, "Buffers don't match!\n")
+
+    @pytest.mark.delay
+    def test_longDelay(self):
+        """
+        Test if usb stack recovers correctly after a timeout.
+        The long delay will cause a timeout on the next ctrl_transfer
+        and we check that this gives an exception.  The next ctrl_transfer
+        should go through without problems.
+        """
+        x = 16
+        buf_out = array.array('b')
+        for i in range(0,x) : buf_out.append(48 + (x+i) % 10)
+        self.dev.ctrl_transfer(self.req_out, 3, x, 0, buf_out)
+        delaycmd = struct.pack('<BL', 0, 50000000)
+        self.dev.write(self.intr_out, delaycmd)
+        # this is expected to timeout
+        self.assertRaises(usb.USBError, self.dev.ctrl_transfer, self.req, 4, x, 0, x)
+        time.sleep(2)
+        # this should work again
+        buf_in = self.dev.ctrl_transfer(self.req, 4, x, 0, x)
+        self.assertEqual(len(buf_in), x,  "Should have read as much as we asked for")
+        self.assertEqual(buf_in, buf_out, "Buffers don't match!\n")
 
 
 if __name__ == '__main__':
